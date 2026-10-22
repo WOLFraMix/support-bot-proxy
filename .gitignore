@@ -1,0 +1,10 @@
+.vscode/
+go.sum
+*.exe
+*.dll
+*.so
+build/
+dist/
+coverage.out
+instruction.txt
+*.png
