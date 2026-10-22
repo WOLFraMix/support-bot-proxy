@@ -14,7 +14,7 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -o support-bot-proxy ./cmd/server
 
 # Финальный образ — маленький, только бинарь
-FROM alpine:3.22
+FROM alpine:3.24
 RUN apk --no-cache add ca-certificates
 WORKDIR /root/
 COPY --from=builder /app/support-bot-proxy .
