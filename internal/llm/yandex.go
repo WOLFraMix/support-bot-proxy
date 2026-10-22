@@ -8,12 +8,13 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/WOLFraMix/support-bot-proxy/internal/config"
 )
 
-const yandexURL = "https://llm.api.cloud.yandex.net/foundation-models/v1/completion"
+const yandexURL = "https://llm.api.cloud.yandex.net/foundationModels/v1/completion"
 
 type YandexClient struct {
 	// Делаем поле экспортируемым, чтобы тесты могли его подменить
@@ -28,51 +29,79 @@ func NewYandexClient(cfg *config.Config) *YandexClient {
 	}
 }
 
-// Вложенные структуры с правильными JSON-тегами
+// ---- Тело запроса (формат completion API) ----
+
 type yandexRequest struct {
-	ModelUri       string         `json:"modelUri"`
-	CompletionSpec completionSpec `json:"completionSpec"`
+	ModelURI          string            `json:"modelUri"`
+	CompletionOptions completionOptions `json:"completionOptions"`
+	Messages          []message         `json:"messages"`
 }
 
-type completionSpec struct {
-	TextCompletionSpec textCompletionSpec `json:"textCompletionSpec"`
+type completionOptions struct {
+	Stream      bool    `json:"stream"`
+	Temperature float64 `json:"temperature"`
+	MaxTokens   int     `json:"maxTokens"`
 }
 
-type textCompletionSpec struct {
-	Prompt        string   `json:"prompt"`
-	Temperature   float64  `json:"temperature"`
-	MaxTokens     int      `json:"maxTokens"`
-	StopSequences []string `json:"stopSequences,omitempty"`
+type message struct {
+	Role string `json:"role"`
+	Text string `json:"text"`
 }
+
+// ---- Разбор ответа API: { "result": { "alternatives": [...] } } ----
 
 type yandexResponse struct {
-	Results []struct {
+	Result struct {
 		Alternatives []struct {
 			Message struct {
+				Role string `json:"role"`
 				Text string `json:"text"`
 			} `json:"message"`
 		} `json:"alternatives"`
-	} `json:"results"`
+	} `json:"result"`
+}
+
+// ExtractJSON вырезает чистый JSON из ответа модели,
+// даже если тот завёрнут в markdown-блок ```...```
+func ExtractJSON(s string) string {
+	s = strings.TrimSpace(s)
+	if strings.HasPrefix(s, "```") {
+		s = strings.TrimPrefix(s, "```json")
+		s = strings.TrimPrefix(s, "```")
+		if idx := strings.LastIndex(s, "```"); idx != -1 {
+			s = s[:idx]
+		}
+		s = strings.TrimSpace(s)
+	}
+	// Страховка: берём текст от первой { до последней }
+	if start := strings.Index(s, "{"); start != -1 {
+		if end := strings.LastIndex(s, "}"); end != -1 && end > start {
+			return s[start : end+1]
+		}
+	}
+	return s
 }
 
 func (c *YandexClient) GenerateResponse(ctx context.Context, userText string) (string, error) {
-	prompt := fmt.Sprintf(`Ты — помощник поддержки. Пользователь прислал сообщение: "%s". Верни JSON строго в этом формате (ничего кроме JSON):
+	systemPrompt := `Ты — помощник поддержки. Верни JSON строго в этом формате (ничего кроме JSON):
 {
   "category": "technical_issue|billing|feature_request|other",
   "draft_reply": "Короткий черновик ответа пользователю (не более 150 символов)",
   "jira_summary": "Заголовок задачи для Jira (до 100 символов)",
   "jira_description": "Описание задачи для Jira"
 }
-Если не можешь классифицировать — поставь category: other.`, userText)
+Если не можешь классифицировать — поставь category: other.`
 
 	reqBody := yandexRequest{
-		ModelUri: fmt.Sprintf("gpt://%s/yandexgpt/latest", c.cfg.YandexFolderID),
-		CompletionSpec: completionSpec{
-			TextCompletionSpec: textCompletionSpec{
-				Prompt:      prompt,
-				Temperature: 0.3,
-				MaxTokens:   512,
-			},
+		ModelURI: fmt.Sprintf("gpt://%s/yandexgpt/latest", c.cfg.YandexFolderID),
+		CompletionOptions: completionOptions{
+			Stream:      false,
+			Temperature: 0.3,
+			MaxTokens:   512,
+		},
+		Messages: []message{
+			{Role: "system", Text: systemPrompt},
+			{Role: "user", Text: userText},
 		},
 	}
 
@@ -105,9 +134,9 @@ func (c *YandexClient) GenerateResponse(ctx context.Context, userText string) (s
 		return "", err
 	}
 
-	if len(yResp.Results) == 0 || len(yResp.Results[0].Alternatives) == 0 {
+	if len(yResp.Result.Alternatives) == 0 {
 		return "", errors.New("empty response from YandexGPT")
 	}
 
-	return yResp.Results[0].Alternatives[0].Message.Text, nil
+	return yResp.Result.Alternatives[0].Message.Text, nil
 }

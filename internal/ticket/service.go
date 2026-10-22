@@ -35,6 +35,10 @@ func (s *Service) Process(ctx context.Context, req SupportRequest) (*SupportResp
 		return nil, err
 	}
 
+	// Модель часто заворачивает ответ в markdown-блок ```json ... ```
+	// Вырезаем чистый JSON перед парсингом
+	clean := llm.ExtractJSON(raw)
+
 	var parsed struct {
 		Category        string `json:"category"`
 		DraftReply      string `json:"draft_reply"`
@@ -42,8 +46,8 @@ func (s *Service) Process(ctx context.Context, req SupportRequest) (*SupportResp
 		JiraDescription string `json:"jira_description"`
 	}
 
-	if err := json.Unmarshal([]byte(raw), &parsed); err != nil {
-		return nil, fmt.Errorf("invalid JSON from LLM: %w", err)
+	if err := json.Unmarshal([]byte(clean), &parsed); err != nil {
+		return nil, fmt.Errorf("invalid JSON from LLM: %w (raw: %s)", err, raw)
 	}
 
 	ticketKey := GenerateTicketKey()

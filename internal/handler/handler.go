@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 
@@ -40,6 +41,7 @@ func (h *Handler) SupportHandler() http.HandlerFunc {
 		duration := time.Since(start).Seconds()
 
 		if err != nil {
+			log.Printf("GenerateResponse failed: %v", err)
 			// Считаем как ошибку
 			metrics.SupportRequestsTotal.WithLabelValues(handlerName, "500").Inc()
 			metrics.SupportRequestDuration.WithLabelValues(handlerName).Observe(duration)
@@ -51,7 +53,7 @@ func (h *Handler) SupportHandler() http.HandlerFunc {
 		metrics.SupportRequestsTotal.WithLabelValues(handlerName, "200").Inc()
 		metrics.SupportRequestDuration.WithLabelValues(handlerName).Observe(duration)
 
-		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		_ = json.NewEncoder(w).Encode(struct {
 			TicketKey   string `json:"ticket_key"`
 			Category    string `json:"category"`
