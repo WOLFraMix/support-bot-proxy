@@ -2,6 +2,7 @@ package ticket
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -33,7 +34,7 @@ func TestService_Process_Integration(t *testing.T) {
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
-			http.Error(w, "только POST", http.StatusMethodNotAllowed)
+			http.Error(w, "only POST", http.StatusMethodNotAllowed)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -70,9 +71,10 @@ func TestService_Process_InvalidJSON(t *testing.T) {
 
 	client := llm.NewYandexClient(cfg)
 
+	// Возвращаем невалидный JSON: просто текст, не JSON
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte("{ это не JSON }"))
+		_, _ = w.Write([]byte("это вообще не JSON"))
 	}))
 	defer ts.Close()
 
@@ -90,5 +92,8 @@ func TestService_Process_InvalidJSON(t *testing.T) {
 
 	_, err := service.Process(ctx, req)
 	assert.Error(t, err, "При невалидном JSON сервис должен вернуть ошибку")
-	assert.Contains(t, err.Error(), "invalid JSON", "Сообщение об ошибке должно намекать на проблему парсинга")
+
+	// ГЛАВНОЕ ИСПРАВЛЕНИЕ: проверяем тип ошибки, а не текст
+	var syntaxErr *json.SyntaxError
+	assert.ErrorAs(t, err, &syntaxErr, "Ошибка должна быть синтаксической ошибкой JSON")
 }

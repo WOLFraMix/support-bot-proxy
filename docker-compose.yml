@@ -13,10 +13,12 @@ services:
     networks:
       - bot-net
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 10s
       timeout: 5s
       retries: 3
+      start_period: 40s   # даём приложению время на старт
+    command: ["./support-bot-proxy"]  # явно указываем бинарь
 
   n8n:
     image: docker.n8n.io/n8nio/n8n:2.44.6
