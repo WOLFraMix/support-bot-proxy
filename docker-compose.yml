@@ -1,0 +1,81 @@
+version: "3.8"
+
+services:
+  app:
+    build: .
+    container_name: support-bot-proxy
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - YANDEX_API_KEY=${YANDEX_API_KEY}
+      - YANDEX_FOLDER_ID=${YANDEX_FOLDER_ID}
+      - PROMETHEUS_ENABLED=true
+    restart: unless-stopped
+    networks:
+      - bot-net
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n
+    container_name: n8n-orchestrator
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=n8n
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - EXECUTIONS_DATA_PRUNE=true
+      - EXECUTIONS_DATA_MAX_AGE=1d
+    volumes:
+      - n8n_data:/home/node/.n8n
+    depends_on:
+      - app
+    condition: service_healthy
+    networks:
+      - bot-net
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    restart: unless-stopped
+    networks:
+      - bot-net
+
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    networks:
+      - bot-net
+
+volumes:
+  n8n_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  bot-net:
+    driver: bridge
