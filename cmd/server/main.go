@@ -8,6 +8,7 @@ import (
 	"github.com/WOLFraMix/support-bot-proxy/internal/config"
 	"github.com/WOLFraMix/support-bot-proxy/internal/handler"
 	"github.com/WOLFraMix/support-bot-proxy/internal/llm"
+	"github.com/WOLFraMix/support-bot-proxy/internal/metrics"
 	"github.com/WOLFraMix/support-bot-proxy/internal/ticket"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -18,6 +19,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to load config: %v", err)
 	}
+
+	// Регистрируем метрики ДО запуска сервера
+	metrics.Register()
 
 	// 2. Инициализация зависимостей
 	llmClient := llm.NewYandexClient(cfg)

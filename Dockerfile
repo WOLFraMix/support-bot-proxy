@@ -15,7 +15,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o support-bot-proxy ./cmd/server
 # Финальный образ — маленький, только бинарь
 FROM alpine:3.24
 
-RUN apk --no-cache add ca-certificates
+# Добавляем ca-certificates и curl (нужен для healthcheck)
+RUN apk --no-cache add ca-certificates curl
 
 WORKDIR /root/
 

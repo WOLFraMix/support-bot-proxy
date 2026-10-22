@@ -17,7 +17,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
-      start_period: 40s   # даём приложению время на старт
+      start_period: 60s   # даём приложению время на старт
     command: ["./support-bot-proxy"]  # явно указываем бинарь
 
   n8n:
