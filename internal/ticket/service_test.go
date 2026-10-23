@@ -38,7 +38,7 @@ func TestService_Process_Integration(t *testing.T) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		_, _ = w.Write([]byte(`{"results":[{"alternatives":[{"message":{"text":"{\"category\":\"technical_issue\",\"draft_reply\":\"Мы проверим проблему.\",\"jira_summary\":\"Проблема с входом\",\"jira_description\":\"Пользователь не может войти в аккаунт.\"}"}}]}]}`))
+		_, _ = w.Write([]byte(`{"result":{"alternatives":[{"message":{"role":"assistant","text":"{\"category\":\"technical_issue\",\"draft_reply\":\"Мы проверим проблему.\",\"jira_summary\":\"Проблема с входом\",\"jira_description\":\"Пользователь не может войти в аккаунт.\"}"}}]}}`))
 	}))
 	defer ts.Close()
 
