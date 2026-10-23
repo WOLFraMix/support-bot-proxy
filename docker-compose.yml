@@ -9,6 +9,10 @@ services:
       - YANDEX_API_KEY=${YANDEX_API_KEY}
       - YANDEX_FOLDER_ID=${YANDEX_FOLDER_ID}
       - PROMETHEUS_ENABLED=true
+      - REDMINE_URL=${REDMINE_URL}
+      - REDMINE_API_KEY=${REDMINE_API_KEY}
+      - REDMINE_PROJECT_ID=${REDMINE_PROJECT_ID}
+      - REDMINE_TRACKER_ID=${REDMINE_TRACKER_ID}
     restart: unless-stopped
     networks:
       - bot-net
@@ -71,10 +75,36 @@ services:
     networks:
       - bot-net
 
+  redmine-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: redmine
+      POSTGRES_PASSWORD: redmine
+      POSTGRES_DB: redmine
+    volumes:
+      - redmine_db:/var/lib/postgresql/data
+    networks:
+      - bot-net
+
+  redmine:
+    image: redmine:5.1
+    ports:
+      - "3001:3000"
+    environment:
+      REDMINE_DB_POSTGRES: redmine-db
+      REDMINE_DB_USERNAME: redmine
+      REDMINE_DB_PASSWORD: redmine
+    volumes:
+      - redmine_files:/usr/src/redmine/files
+    networks:
+      - bot-net
+
 volumes:
   n8n_data:
   prometheus_data:
   grafana_data:
+  redmine_db:
+  redmine_files:
 
 networks:
   bot-net:

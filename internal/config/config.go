@@ -14,6 +14,10 @@ type Config struct {
 	PrometheusEnabled bool
 	ReadTimeout       time.Duration
 	WriteTimeout      time.Duration
+	RedmineURL        string // REDMINE_URL
+	RedmineAPIKey     string // REDMINE_API_KEY
+	RedmineProjectID  string // REDMINE_PROJECT_ID
+	RedmineTrackerID  int
 }
 
 func Load() (*Config, error) {
@@ -37,12 +41,25 @@ func Load() (*Config, error) {
 		PrometheusEnabled: prometheusEnabled,
 		ReadTimeout:       readTimeout,
 		WriteTimeout:      writeTimeout,
+		RedmineURL:        getEnv("REDMINE_URL", "http://redmine:3000"),
+		RedmineAPIKey:     os.Getenv("REDMINE_API_KEY"),
+		RedmineProjectID:  getEnv("REDMINE_PROJECT_ID", "support"),
+		RedmineTrackerID:  getEnvInt("REDMINE_TRACKER_ID", 1),
 	}, nil
 }
 
 func getEnv(key, fallback string) string {
 	if value, ok := os.LookupEnv(key); ok && value != "" {
 		return value
+	}
+	return fallback
+}
+
+func getEnvInt(key string, fallback int) int {
+	if value, ok := os.LookupEnv(key); ok && value != "" {
+		if n, err := strconv.Atoi(value); err == nil {
+			return n
+		}
 	}
 	return fallback
 }

@@ -25,7 +25,23 @@ func main() {
 
 	// 2. Инициализация зависимостей
 	llmClient := llm.NewYandexClient(cfg)
-	ticketService := ticket.NewService(llmClient)
+
+	var ticketCreator ticket.TicketCreator
+	switch {
+	case cfg.RedmineAPIKey != "":
+		ticketCreator = ticket.NewRedmineClient(ticket.RedmineConfig{
+			URL:       cfg.RedmineURL,
+			APIKey:    cfg.RedmineAPIKey,
+			ProjectID: cfg.RedmineProjectID,
+			TrackerID: cfg.RedmineTrackerID,
+		})
+		log.Printf("ticket storage: Redmine (%s, project %s)", cfg.RedmineURL, cfg.RedmineProjectID)
+	default:
+		ticketCreator = ticket.MockCreator{}
+		log.Printf("ticket storage: mock (REDMINE_API_KEY not set)")
+	}
+
+	ticketService := ticket.NewService(llmClient, ticketCreator)
 
 	// 3. Создаём хендлер с зависимостями
 	h := handler.NewHandler(ticketService)

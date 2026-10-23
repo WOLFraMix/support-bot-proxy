@@ -10,10 +10,16 @@ import (
 
 type Service struct {
 	llmClient *llm.YandexClient
+	tickets   TicketCreator // вместо прямого вызова GenerateTicketKey
 }
 
-func NewService(llmClient *llm.YandexClient) *Service {
-	return &Service{llmClient: llmClient}
+// TicketCreator — то, что умеет создавать тикеты. Реализации: мок и Redmine.
+type TicketCreator interface {
+	CreateTicket(ctx context.Context, summary, description string) (string, error)
+}
+
+func NewService(llmClient *llm.YandexClient, tickets TicketCreator) *Service {
+	return &Service{llmClient: llmClient, tickets: tickets}
 }
 
 type SupportRequest struct {
@@ -50,7 +56,10 @@ func (s *Service) Process(ctx context.Context, req SupportRequest) (*SupportResp
 		return nil, fmt.Errorf("invalid JSON from LLM: %w (raw: %s)", err, raw)
 	}
 
-	ticketKey := GenerateTicketKey()
+	ticketKey, err := s.tickets.CreateTicket(ctx, parsed.JiraSummary, parsed.JiraDescription)
+	if err != nil {
+		return nil, fmt.Errorf("create ticket: %w", err)
+	}
 
 	return &SupportResponse{
 		TicketKey:       ticketKey,

@@ -51,7 +51,7 @@ func TestService_Process_Integration(t *testing.T) {
 		}),
 	}
 
-	service := NewService(client)
+	service := NewService(client, MockCreator{})
 	req := SupportRequest{UserText: "Не могу войти в аккаунт"}
 	resp, err := service.Process(ctx, req)
 
@@ -87,13 +87,13 @@ func TestService_Process_InvalidJSON(t *testing.T) {
 		}),
 	}
 
-	service := NewService(client)
+	service := NewService(client, MockCreator{})
 	req := SupportRequest{UserText: "Странный запрос"}
 
 	_, err := service.Process(ctx, req)
 	assert.Error(t, err, "При невалидном JSON сервис должен вернуть ошибку")
 
-	// ГЛАВНОЕ ИСПРАВЛЕНИЕ: проверяем тип ошибки, а не текст
+	// Проверяем тип ошибки, а не текст
 	var syntaxErr *json.SyntaxError
 	assert.ErrorAs(t, err, &syntaxErr, "Ошибка должна быть синтаксической ошибкой JSON")
 }
