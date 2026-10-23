@@ -45,6 +45,9 @@ func main() {
 	// Метрики Prometheus
 	mux.Handle("/metrics", promhttp.Handler())
 
+	// Веб-чат (статика) — фолбэк на "/"
+	mux.Handle("/", http.FileServer(http.Dir("./static")))
+
 	addr := ":" + cfg.Port
 	log.Printf("starting server on %s", addr)
 

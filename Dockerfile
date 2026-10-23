@@ -23,6 +23,9 @@ WORKDIR /root/
 # Копируем бинарь из builder
 COPY --from=builder /app/support-bot-proxy .
 
+# Копируем статику веб-чата
+COPY static/ ./static/
+
 # Важно: явно говорим, какой порт слушает приложение
 EXPOSE 8080
 
