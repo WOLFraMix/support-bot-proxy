@@ -99,6 +99,16 @@ services:
     networks:
       - bot-net
 
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: mailpit
+    ports:
+      - "8025:8025"   # веб-интерфейс
+      - "1025:1025"   # SMTP
+    restart: unless-stopped
+    networks:
+      - bot-net
+
 volumes:
   n8n_data:
   prometheus_data:
